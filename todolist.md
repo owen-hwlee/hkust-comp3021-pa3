@@ -49,9 +49,9 @@ Explanation:
   - [ ] The game ends when either:
     - [ ] The winning condition is satisfied (i.e., all boxes are placed on the destinations)
     - [ ] All actions in all action files (before the first `Exit`) have been processed
-- [ ] `ReplaySokobanGame::run`
-  - [ ] Starts the game by spawning threads for each `InputEngine` and `RenderingEngine` instance
-  - [ ] When `run` method returns, all spawned threads should already terminate
+- [x] `ReplaySokobanGame::run`
+  - [x] Starts the game by spawning threads for each `InputEngine` and `RenderingEngine` instance
+  - [x] When `run` method returns, all spawned threads should already terminate
 - [ ] `ReplaySokobanGame.InputEngineRunnable`
   - [ ] For each action file, (and the corresponding `InputEngine`), all actions before (inclusive) the first `Exit` (`E`) should be processed (i.e. fed to the `processAction` method)
     - Assumption: The last action in an action file is always `Exit` (`E`)
@@ -96,7 +96,7 @@ These are test cases written by ourselves. These test cases are written in `Inte
 
 | Passed?  | Test name  | Test description  | Thread-dependent?  | # repetitions  |
 |--- |--- |--- |--- |--- |
-| No  | testMainThreadLastToTerminate  | Game's run method should wait for all threads to finish before return  | Yes  | 100  |
+| Test in development  | testMainThreadLastToTerminate  | Game's run method should wait for all threads to finish before return  | Yes  | 100  |
 
 #### `ReplaySokobanGame.InputEngineRunnable`
 
