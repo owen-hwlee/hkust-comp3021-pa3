@@ -231,12 +231,47 @@ class IntegratedReplaySokobanGameTest {
     @Nested
     class CustomReplaySokobanGameTest {
 
-        @Disabled
-        @DisplayName("Game's run method should wait for all threads to finish before return")
-        @RepeatedTest(THREAD_UNSAFE_REPETITIONS)
-        @Tag(TestKind.PUBLIC)
-        void testMainThreadLastToTerminate() {
-            // TODO: test main thread blocked until all engine threads finish
+        /**
+         * Contains test cases to test behaviour of ReplaySokobanGame class
+         */
+        @Nested
+        class ClassReplaySokobanGameTest {
+
+        }
+
+
+        /**
+         * Contains test cases to test ReplaySokobanGame::run
+         */
+        @Nested
+        class RunTest {
+
+            @Disabled
+            @DisplayName("Game's run method should wait for all threads to finish before return")
+            @RepeatedTest(THREAD_UNSAFE_REPETITIONS)
+            @Tag(TestKind.PUBLIC)
+            void testMainThreadLastToTerminate() {
+                // TODO: test main thread blocked until all engine threads finish
+            }
+
+        }
+
+
+        /**
+         * Contains test cases to test ReplaySokobanGame::InputEngineRunnable
+         */
+        @Nested
+        class InputEngineRunnableTest {
+
+        }
+
+
+        /**
+         * Contains test cases to test ReplaySokobanGame::RenderingEngineRunnable
+         */
+        @Nested
+        class RenderingEngineRunnableTest {
+
         }
         
     }
