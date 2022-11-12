@@ -173,7 +173,29 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
      */
     @Override
     public void run() {
-        // TODO
+        // DONE
+        Thread[] engineThreads = new Thread[this.inputEngines.size() + 1];
+
+        // Spawn new thread for rendering engine, and start thread
+        // Index engineThreads.length-1 is Thread for renderingEngine
+        engineThreads[engineThreads.length - 1] = new Thread(new RenderingEngineRunnable());
+        engineThreads[engineThreads.length - 1].start();
+
+        // Spawn new threads for each input engine, and start threads
+        // Index 0 - engineThreads.length-2 are Threads for inputEngines
+        for (int i = 0; i < this.inputEngines.size(); ++i) {
+            engineThreads[i] = new Thread(new InputEngineRunnable(i, inputEngines.get(i)));
+            engineThreads[i].start();
+        }
+
+        // Wait for all threads to finish before return
+        try {
+            for (Thread engineThread: engineThreads) {
+                engineThread.join();
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }
