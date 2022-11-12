@@ -174,26 +174,32 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
     @Override
     public void run() {
         // DONE
-        Thread[] engineThreads = new Thread[this.inputEngines.size() + 1];
 
-        // Spawn new thread for rendering engine, and start thread
-        // Index engineThreads.length-1 is Thread for renderingEngine
-        engineThreads[engineThreads.length - 1] = new Thread(new RenderingEngineRunnable());
-        engineThreads[engineThreads.length - 1].start();
+        // Spawn new thread for rendering engine
+        final Thread renderingEngineThread = new Thread(new RenderingEngineRunnable());
 
-        // Spawn new threads for each input engine, and start threads
-        // Index 0 - engineThreads.length-2 are Threads for inputEngines
+        // Spawn new threads for each input engine
+        final Thread[] inputEngineThreads = new Thread[this.inputEngines.size()];
         for (int i = 0; i < this.inputEngines.size(); ++i) {
-            engineThreads[i] = new Thread(new InputEngineRunnable(i, inputEngines.get(i)));
-            engineThreads[i].start();
+            final InputEngineRunnable inputEngineRunnable = new InputEngineRunnable(i, inputEngines.get(i));
+            final Thread inputEngineThread = new Thread(inputEngineRunnable);
+            inputEngineThreads[i] = inputEngineThread;
+        }
+
+        // Start threads
+        renderingEngineThread.start();
+        for (final Thread engineThread: inputEngineThreads) {
+            engineThread.start();
         }
 
         // Wait for all threads to finish before return
         try {
-            for (Thread engineThread: engineThreads) {
+            for (final Thread engineThread: inputEngineThreads) {
                 engineThread.join();
             }
+            renderingEngineThread.join();
         } catch (InterruptedException e) {
+            System.out.println("Thread Interrupted Exception: " + e);
             throw new RuntimeException(e);
         }
     }
