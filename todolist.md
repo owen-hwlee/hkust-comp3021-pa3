@@ -74,17 +74,41 @@ These are test cases provided by TAs to check previously implemented features. T
 
 These are the test cases provided by TAs to rudimentarily test our implementation of `ReplaySokobanGame`. These test cases are provided in `ReplaySokobanGameTest`, but in order to test more deterministically, these tests are copied to `IntegratedReplaySokobanGameTest.GivenReplaySokobanGameTest` and configured to repeat.
 
+| Passed?  | Test name  | Test description  | Thread-dependent?  | # repetitions  |
+|--- |--- |--- |--- |--- |
+| Yes  | testRenderingEngineThread  | Game's run method should spawn a new thread for rendering engine  | No  | 20  |
+| Yes  | testInputEngineThread  | Game's run method should spwan one thread for each input engine  | No  | 20  |
+| No  | testMovesOrderMultiple  | Moves from the same input engine should be processed in the same order (multiple input engine)  | Yes  | 100  |
+| No  | testRoundRobinModeEqualLength  | Action order should be enforced in ROUND_ROBIN mode (all input engines have same length of actions  | Yes  | 100  |
+| No  | testFPS  | FPS parameter should specify the times render method is invoked per second  | Yes  | 100  |
+
 ### Custom test cases
 
 These are test cases written by ourselves. These test cases are written in `IntegratedReplaySokobanGameTest.CustomReplaySokobanGameTest`.
 
 #### `ReplaySokobanGame` class
 
+| Passed?  | Test name  | Test description  | Thread-dependent?  | # repetitions  |
+|--- |--- |--- |--- |--- |
+| No  | .  | .  | .  | .  |
+
 #### `ReplaySokobanGame::run`
+
+| Passed?  | Test name  | Test description  | Thread-dependent?  | # repetitions  |
+|--- |--- |--- |--- |--- |
+| No  | testMainThreadLastToTerminate  | Game's run method should wait for all threads to finish before return  | Yes  | 100  |
 
 #### `ReplaySokobanGame.InputEngineRunnable`
 
+| Passed?  | Test name  | Test description  | Thread-dependent?  | # repetitions  |
+|--- |--- |--- |--- |--- |
+| No  | .  | .  | .  | .  |
+
 #### `ReplaySokobanGame.RenderingEngineRunnable`
+
+| Passed?  | Test name  | Test description  | Thread-dependent?  | # repetitions  |
+|--- |--- |--- |--- |--- |
+| No  | .  | .  | .  | .  |
 
 ## Non-specified implementations
 
@@ -97,6 +121,7 @@ These are test cases written by ourselves. These test cases are written in `Inte
 
 - [ ] `ReplaySokobanGame` class
 - [ ] `ReplaySokobanGame::run`
+  - Can refer to `Sokoban::replayGame`
 - [ ] `ReplaySokobanGame.InputEngineRunnable`
 - [ ] `ReplaySokobanGame.RenderingEngineRunnable`
   - [ ] `Thread.sleep()` is capable of passing FPS test, but requires solid understanding of Java programme execution (verified by TAs in Discussion #156)
