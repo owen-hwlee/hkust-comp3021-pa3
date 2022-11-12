@@ -32,7 +32,7 @@ Explanation:
   - Each game instance runs in a separate Thread in parallel
   - All game instances replay the exact same game setting
 - `map_file`: file path of selected map file
-- `mode`: game mode, can be `FREE_RACE` or `ROUND_ROBIN`
+- `mode`: scheduling mode between `InputEngine` threads, can be `FREE_RACE` or `ROUND_ROBIN`
   - `FREE_RACE`: the `InputEngine` threads perform actions concurrently without any scheduling in the order
     - The final order of processed actions are arbitrary and may be different across different runs
   - `ROUND_ROBIN`: all `InputEngine` threads perform actions in a round-robin fashion (turn by turn)
@@ -42,21 +42,27 @@ Explanation:
   - First line of action file is player ID
   - Then, each line represents an action of the player
 
-### Game assumptions
-
-These assumptions have been implemented and should not be modified:
-
-- The last action in an action file is always `Exit` (`E`).
-- Each action file corresponds to one `InputEngine` instance, and they are passed in the same order as an array to `ReplaySokobanGame`.
-- The `InputEngine` passed to `ReplaySokobanGame` is an instance of `StreamInputEngine` and `fetchAction` method will return the next action in the action file no matter whether there are `Exit` in the middle. If there are no more actions, `Exit` will be returned.
-
 ## Requirements list
 
 - [ ] `ReplaySokobanGame` class
   - [ ] Correctness: for an arbitrary list of games, running them in parallel should achieve the same result as running them in sequence
+  - [ ] The game ends when either:
+    - [ ] The winning condition is satisfied (i.e., all boxes are placed on the destinations)
+    - [ ] All actions in all action files (before the first `Exit`) have been processed
 - [ ] `ReplaySokobanGame::run`
+  - [ ] Starts the game by spawning threads for each `InputEngine` and `RenderingEngine` instance
+  - [ ] When `run` method returns, all spawned threads should already terminate
 - [ ] `ReplaySokobanGame.InputEngineRunnable`
+  - [ ] For each action file, (and the corresponding `InputEngine`), all actions before (inclusive) the first `Exit` (`E`) should be processed (i.e. fed to the `processAction` method)
+    - Assumption: The last action in an action file is always `Exit` (`E`)
+  - [ ] After the first `Exit` (`E`) is processed, all other actions in the action file should be ignored (i.e., not fed to the `processAction` method)
+    - Assumption: The `InputEngine` passed to `ReplaySokobanGame` is an instance of `StreamInputEngine` and `fetchAction` method will return the next action in the action file no matter whether there are `Exit` in the middle. If there are no more actions, `Exit` will be returned
+  - [ ] Actions in the same action file should be processed in the same order as they appear in the action file
+    - Assumption: Each action file corresponds to one `InputEngine` instance, and they are passed in the same order as an array to `ReplaySokobanGame`
 - [ ] `ReplaySokobanGame.RenderingEngineRunnable`
+  - [ ] Game must be rendered at least once before first action is performed (i.e. the initial state of the game must be rendered)
+  - [ ] Game must be rendered at least once after the last action is performed (i.e. the final state of the game must be rendered)
+    - [ ] Trailing `Exit` action does not count
 
 ## Test cases
 
