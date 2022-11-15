@@ -65,7 +65,7 @@ class IntegratedReplaySokobanGameTest {
             }
         }
 
-        @DisplayName("Game's run method should spwan one thread for each input engine")
+        @DisplayName("Game's run method should spawn one thread for each input engine")
         @RepeatedTest(THREAD_SAFE_REPETITIONS)
         @Tag(TestKind.PUBLIC)
         void testInputEngineThread() {
@@ -236,7 +236,11 @@ class IntegratedReplaySokobanGameTest {
          */
         @Nested
         class ClassReplaySokobanGameTest {
+            // Correctness
 
+            // Game ends with either
+            // - Winning condition is satisfied
+            // - All actions before the first Exit in all action files have been processed
         }
 
 
@@ -248,10 +252,50 @@ class IntegratedReplaySokobanGameTest {
 
             @Disabled
             @DisplayName("Game's run method should wait for all threads to finish before return")
-            @RepeatedTest(THREAD_UNSAFE_REPETITIONS)
+            @RepeatedTest(THREAD_SAFE_REPETITIONS)
             @Tag(TestKind.PUBLIC)
             void testMainThreadLastToTerminate() {
                 // TODO: test main thread blocked until all engine threads finish
+//                final var mainThread = Thread.currentThread();
+//
+//                final var gameState = mock(GameState.class);
+//                final var inputEngine1 = mock(InputEngine.class);
+//                final var inputEngine2 = mock(InputEngine.class);
+//                final var renderingEngine = mock(RenderingEngine.class);
+//                final var game = new TestGame(gameState, List.of(inputEngine1, inputEngine2), renderingEngine);
+//
+//                final var engineThreads = new ConcurrentSkipListSet<Thread>();
+//
+//                doAnswer(invocation -> {
+//                    engineThreads.add(Thread.currentThread());
+//                    assertTrue(Thread.currentThread().isAlive());
+//                    assertTrue(mainThread.isAlive());
+//                    assertEquals(Thread.State.WAITING, mainThread.getState());
+//                    return null;
+//                }).when(renderingEngine).render(any());
+//                doAnswer(invocation -> {
+//                    assertTrue(Thread.currentThread().isAlive());
+//                    assertTrue(mainThread.isAlive());
+//                    return null;
+//                }).when(inputEngine1).fetchAction();
+//                doAnswer(invocation -> {
+//                    assertTrue(Thread.currentThread().isAlive());
+//                    assertTrue(mainThread.isAlive());
+//                    return null;
+//                }).when(inputEngine2).fetchAction();
+//                when(inputEngine1.fetchAction())
+//                        .thenAnswer(new RandomlyPausedActionProducer(new Move.Right(0), new Exit()));
+//                when(inputEngine2.fetchAction())
+//                        .thenAnswer(new RandomlyPausedActionProducer(new Move.Up(0), new Exit()));
+//
+//                game.run();
+//
+////                assertTrue(mainThread.isAlive());
+//
+//                while (mainThread.isAlive()) ;
+//
+//                engineThreads.forEach(thread -> assertEquals(Thread.State.TERMINATED, thread.getState()));
+//                assertEquals(Thread.State.TERMINATED, mainThread.getState());
             }
 
         }
@@ -262,7 +306,15 @@ class IntegratedReplaySokobanGameTest {
          */
         @Nested
         class InputEngineRunnableTest {
+            // All actions before the first Exit should be processed
 
+            // All actions after the first Exit should be ignored
+
+            // All actions should be processed in the same order as they appear in the action file
+
+            // Test round-robin
+
+            // Test free race
         }
 
 
@@ -271,7 +323,9 @@ class IntegratedReplaySokobanGameTest {
          */
         @Nested
         class RenderingEngineRunnableTest {
+            // Game must be rendered once before first action
 
+            // Game must be rendered once after last action performed (excluding Exit)
         }
         
     }
