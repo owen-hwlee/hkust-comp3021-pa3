@@ -64,6 +64,93 @@ Explanation:
   - [ ] Game must be rendered at least once after the last action is performed (i.e. the final state of the game must be rendered)
     - [ ] Trailing `Exit` action does not count
 
+## Multi-threading in this PA
+
+In this PA, there are 2 layers of multithreading.
+
+### Outer layer: Repeat Game
+
+Note: this has been implemented by TAs.
+
+This PA expects concurrent execution of `<REPEAT>` number of the exact same game.
+
+From the main Thread, `REPEAT` number of game Threads are started. There is a corresponding `GameState` for each game Thread. The `Action`s and `GameState` in each game Thread should not interfere with each other. Each game Thread contains an instance of `ReplaySokobanGame`.
+
+### Game layer: In-game Engine Threads
+
+Within each game (`ReplaySokobanGame`), the game Thread should create:
+
+- `1` Thread for the rendering engine (`RenderingEngineRunnable`)
+- `n` Threads for `n` input engines (`InputEngineRunnable`).
+
+The game Thread should then wait for all these engine Threads to terminate.
+
+The engine Threads pertaining to one `GameState` instance should not interfere with other `GameState` instances. The execution order of these engine Threads should be carefully planned to demonstrate game flow correctly.
+
+As an example, the following hierarchy demonstrates the Thread structure of a valid execution with `REPEAT` = 3 and 2 action files (i.e. 2 players):
+
+- Main Thread (programme entry point)
+  - Game Thread 1
+    - Rendering Engine 1
+    - Input Engine 1.1
+    - Input Engine 1.2
+  - Game Thread 2
+    - Rendering Engine 2
+    - Input Engine 2.1
+    - Input Engine 2.2
+  - Game Thread 3
+    - Rendering Engine 3
+    - Input Engine 3.1
+    - Input Engine 3.2
+
+To prevent sharing resource among independent games, static data member implementations should be avoided.
+
+## Methodology
+
+This section documents code logic in my implementation.
+
+Thread concurrency is achieved using a `ReentrantLock` and multiple conditions, one for each engine.
+
+Sequence of execution:
+  main Thread (generate engine Threads in `ReplaySokobanGame::run`)
+  &darr;
+  renderingEngineThread (intro)
+  &darr;
+  [inputEngineThread -> renderingEngineThread] * n (game loop)
+  &darr;
+  renderingEngineThread (win message)
+  &darr;
+  main Thread (wait for all engine Threads to terminate)
+
+### `ReplaySokobanGame::run` logic
+
+The implementation is simple. Refer to given JavaDoc instructions, or if still in doubt, refer to `Sokoban::replayGame`.
+
+Essentially, this game is started by spawning the required engine Threads, starting them, and waiting for these spawned Threads to terminate.
+
+### `ReplaySokobanGame.InputEngineRunnable::run` logic
+
+The implementation of `InputEngineRunnable::run` should fulfill these requirements:
+
+- Wait for rendering engine to render first
+- Determine which input engine Thread gets to run
+- Fetch and process action from selected input engine
+- Pass Thread control back to rendering engine
+- Remember to log the first `Exit` and disable this input engine after handling the `Exit` object
+- Make sure to signal rendering engine to allow it to render win message
+
+### `ReplaySokobanGame.RenderingEngineRunnable::run` logic
+
+The implementation of `RenderingEngineRunnable::run` should fulfill these requirements:
+
+- Render once first
+- Wait for 1 action from any/selected input engine (depending on `Mode`)
+- Render result immediately after processing input
+- Pass Thread control back to any/selected input engine
+- Pass FPS test, i.e. invoke `renderingEngine.render()` `1000 / frameRate` times in every second
+  - Perform `Thread.sleep(1000 / frameRate)` after each render
+- Make sure rendering engine renders win message once after all other input engines finish execution
+
 ## Test cases
 
 ### Regression test cases
@@ -86,25 +173,25 @@ These are the test cases provided by TAs to rudimentarily test our implementatio
 
 These are test cases written by ourselves. These test cases are written in `IntegratedReplaySokobanGameTest.CustomReplaySokobanGameTest`.
 
-#### `ReplaySokobanGame` class
+#### `ReplaySokobanGame` class tests
 
 | Passed?  | Test name  | Test description  | Thread-dependent?  | # repetitions  |
 |--- |--- |--- |--- |--- |
 | No  | .  | .  | .  | .  |
 
-#### `ReplaySokobanGame::run`
+#### `ReplaySokobanGame::run` tests
 
 | Passed?  | Test name  | Test description  | Thread-dependent?  | # repetitions  |
 |--- |--- |--- |--- |--- |
-| Test in development  | testMainThreadLastToTerminate  | Game's run method should wait for all threads to finish before return  | Yes  | 100  |
+| Test unimplemented  | testMainThreadLastToTerminate  | Game's run method should wait for all threads to finish before return  | Yes  | 100  |
 
-#### `ReplaySokobanGame.InputEngineRunnable`
+#### `ReplaySokobanGame.InputEngineRunnable` tests
 
 | Passed?  | Test name  | Test description  | Thread-dependent?  | # repetitions  |
 |--- |--- |--- |--- |--- |
 | No  | .  | .  | .  | .  |
 
-#### `ReplaySokobanGame.RenderingEngineRunnable`
+#### `ReplaySokobanGame.RenderingEngineRunnable` tests
 
 | Passed?  | Test name  | Test description  | Thread-dependent?  | # repetitions  |
 |--- |--- |--- |--- |--- |
@@ -121,7 +208,6 @@ These are test cases written by ourselves. These test cases are written in `Inte
 
 - [ ] `ReplaySokobanGame` class
 - [ ] `ReplaySokobanGame::run`
-  - Can refer to `Sokoban::replayGame`
 - [ ] `ReplaySokobanGame.InputEngineRunnable`
 - [ ] `ReplaySokobanGame.RenderingEngineRunnable`
   - [ ] `Thread.sleep()` is capable of passing FPS test, but requires solid understanding of Java programme execution (verified by TAs in Discussion #156)
