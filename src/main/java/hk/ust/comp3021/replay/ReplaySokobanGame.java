@@ -10,6 +10,8 @@ import hk.ust.comp3021.game.RenderingEngine;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static hk.ust.comp3021.utils.StringResources.*;
 
@@ -88,6 +90,15 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
         this.frameRate = frameRate;
         this.renderingEngine = renderingEngine;
         this.inputEngines = inputEngines;
+
+        // Added code: initialized added locks and conditions
+        this.lock = new ReentrantLock();
+        this.renderingEngineCondition = lock.newCondition();
+        this.inputEnginesConditions = new Condition[inputEngines.size()];
+        for (int i = 0; i < inputEnginesConditions.length; i++) {
+            final Condition inputEngineCondition = lock.newCondition();
+            inputEnginesConditions[i] = inputEngineCondition;
+        }
     }
 
     /**
@@ -103,6 +114,20 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
     }
 
     // TODO: add any method or field you need.
+    // Concurrency information
+
+    // Index used to select input engine in ROUND_ROBIN mode
+    private volatile int inputEngineIndex = 0;
+    // Rendering engine Thread
+    private Thread renderingEngineThread;
+    // Array of input engine Threads
+    private Thread[] inputEnginesThreads;
+    // Concurrency lock
+    private final ReentrantLock lock;
+    // Rendering engine condition
+    private final Condition renderingEngineCondition;
+    // Array of input engine conditions
+    private final Condition[] inputEnginesConditions;
 
     /**
      * The implementation of the Runnable for each input engine thread.
@@ -130,12 +155,52 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
         @Override
         public void run() {
             // TODO: modify this method to implement the requirements.
+
+//            // Force input engine Thread to wait for render engine to render first
+//            try {
+//                inputEnginesConditions[this.index].await();
+//            } catch (InterruptedException e) {
+//                throw new RuntimeException(e);
+//            }
+//
+//            // TODO: Wrap everything in while-loop
             while (!shouldStop()) {
+//
+//                // Create critical region using ReentrantLock
+//                lock.lock();
+//
+//                // Await own turn to run
+//                while (this.index != inputEngineIndex) {
+//                    try {
+//                        inputEnginesConditions[this.index].await();
+//                    } catch (InterruptedException e) {
+//                        throw new RuntimeException(e);
+//                    }
+//                }
+//
+//                // Make sure no other input engines are allowed to execute concurrently
+//                for (int i = 0; i < inputEnginesConditions.length; i++) {
+//                    if (i != this.index) {
+//                        try {
+//                            inputEnginesConditions[i].await();
+//                        } catch (InterruptedException e) {
+//                            throw new RuntimeException(e);
+//                        }
+//                    }
+//                }
+//
+                // Fetch and process Action from this player
                 final var action = inputEngine.fetchAction();
                 final var result = processAction(action);
                 if (result instanceof ActionResult.Failed failed) {
                     renderingEngine.message(failed.getReason());
                 }
+//
+//                // Signal rendering engine after input Action is fetched
+//                renderingEngineCondition.signal();
+//
+//                // Release ReentrantLock
+//                lock.unlock();
             }
         }
     }
@@ -156,13 +221,65 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
         @Override
         public void run() {
             // TODO: modify this method to implement the requirements.
+
+            // Compute number of milliseconds to pass to Thread.sleep
+            final int sleepTime = 1000 / frameRate;
+
+            // TODO: Wrap everything in while-loop
             do {
+//                // Create critical region using ReentrantLock
+//                lock.lock();
+//
+//                // Await own turn to run
+//                // TODO: Determine while loop run condition
+//                while (frameRate > 0) {
+//                    try {
+//                        renderingEngineCondition.await();
+//                    } catch (InterruptedException e) {
+//                        throw new RuntimeException(e);
+//                    }
+//                }
+//
+                // Perform rendering
                 final var undoQuotaMessage = state.getUndoQuota()
                     .map(it -> String.format(UNDO_QUOTA_TEMPLATE, it))
                     .orElse(UNDO_QUOTA_UNLIMITED);
                 renderingEngine.message(undoQuotaMessage);
                 renderingEngine.render(state);
+
+                // Process frameRate
+                // FIXME: still fails small number of FPS test repetitions
+                //  Actual value smaller than expected
+                //  Test case uses
+                //          final var timeElapsed = renderTimes.get(renderTimes.size() - 1).getTime() - renderTimes.get(0).getTime();
+                //          final var expected = (float) timeElapsed / 1000 * fps;
+                try {
+                    Thread.sleep(sleepTime);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+
+//                // Signal input engine(s)
+//                // Allow each inputEngine execution by Mode (ROUND_ROBIN vs FREE_RACE)
+//                if (Mode.ROUND_ROBIN.equals(mode)) {
+//                    // ROUND_ROBIN: allow next input engine to run
+//                    inputEngineIndex = (inputEngineIndex + 1) % inputEngines.size();
+//                    inputEnginesConditions[inputEngineIndex].signal();
+//                } else {
+//                    // FREE_RACE: allow all input engines to run
+//                    for (final Condition inputEngineCondition: inputEnginesConditions) {
+//                        inputEngineCondition.signal();
+//                    }
+//                }
+//
+//                // Release ReentrantLock
+//                lock.unlock();
             } while (!shouldStop());
+
+            // Render win message
+            if (state.isWin()) {
+                renderingEngine.message(WIN_MESSAGE);
+            }
         }
     }
 
@@ -176,25 +293,25 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
         // DONE
 
         // Spawn new thread for rendering engine
-        final Thread renderingEngineThread = new Thread(new RenderingEngineRunnable());
+        this.renderingEngineThread = new Thread(new RenderingEngineRunnable());
 
         // Spawn new threads for each input engine
-        final Thread[] inputEngineThreads = new Thread[this.inputEngines.size()];
+        this.inputEnginesThreads = new Thread[inputEngines.size()];
         for (int i = 0; i < this.inputEngines.size(); ++i) {
             final InputEngineRunnable inputEngineRunnable = new InputEngineRunnable(i, inputEngines.get(i));
             final Thread inputEngineThread = new Thread(inputEngineRunnable);
-            inputEngineThreads[i] = inputEngineThread;
+            this.inputEnginesThreads[i] = inputEngineThread;
         }
 
         // Start threads
         renderingEngineThread.start();
-        for (final Thread engineThread: inputEngineThreads) {
+        for (final Thread engineThread: this.inputEnginesThreads) {
             engineThread.start();
         }
 
         // Wait for all threads to finish before return
         try {
-            for (final Thread engineThread: inputEngineThreads) {
+            for (final Thread engineThread: this.inputEnginesThreads) {
                 engineThread.join();
             }
             renderingEngineThread.join();
