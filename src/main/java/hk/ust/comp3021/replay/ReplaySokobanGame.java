@@ -156,13 +156,16 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
         public void run() {
             // TODO: modify this method to implement the requirements.
 
+            // Store whether an Exit object has been received
+            boolean hasExited = false;
+
 //            // Force input engine Thread to wait for render engine to render first
 //            try {
 //                inputEnginesConditions[this.index].await();
 //            } catch (InterruptedException e) {
 //                throw new RuntimeException(e);
 //            }
-//
+
 //            // TODO: Wrap everything in while-loop
             while (!shouldStop()) {
 //
@@ -188,18 +191,24 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
 //                        }
 //                    }
 //                }
-//
+
                 // Fetch and process Action from this player
-                final var action = inputEngine.fetchAction();
-                final var result = processAction(action);
-                if (result instanceof ActionResult.Failed failed) {
-                    renderingEngine.message(failed.getReason());
+                if (!hasExited) {
+                    final var action = inputEngine.fetchAction();
+                    if (action instanceof Exit) {
+                        hasExited = true;
+                    }
+                    final var result = processAction(action);
+                    if (result instanceof ActionResult.Failed failed) {
+                        renderingEngine.message(failed.getReason());
+                    }
                 }
-//
+
 //                // Signal rendering engine after input Action is fetched
 //                renderingEngineCondition.signal();
 //
 //                // Release ReentrantLock
+//                // FIXME: put in finally clause
 //                lock.unlock();
             }
         }
@@ -223,7 +232,7 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
             // TODO: modify this method to implement the requirements.
 
             // Compute number of milliseconds to pass to Thread.sleep
-            final int sleepTime = 1000 / frameRate;
+            final long sleepTime = 1000 / frameRate;
 
             // TODO: Wrap everything in while-loop
             do {
@@ -239,7 +248,7 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
 //                        throw new RuntimeException(e);
 //                    }
 //                }
-//
+
                 // Perform rendering
                 final var undoQuotaMessage = state.getUndoQuota()
                     .map(it -> String.format(UNDO_QUOTA_TEMPLATE, it))
@@ -273,6 +282,7 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
 //                }
 //
 //                // Release ReentrantLock
+//                // FIXME: put in finally clause
 //                lock.unlock();
             } while (!shouldStop());
 

@@ -53,9 +53,9 @@ Explanation:
   - [x] Starts the game by spawning threads for each `InputEngine` and `RenderingEngine` instance
   - [x] When `run` method returns, all spawned threads should already terminate
 - [ ] `ReplaySokobanGame.InputEngineRunnable`
-  - [ ] For each action file, (and the corresponding `InputEngine`), all actions before (inclusive) the first `Exit` (`E`) should be processed (i.e. fed to the `processAction` method)
+  - [x] For each action file, (and the corresponding `InputEngine`), all actions before (inclusive) the first `Exit` (`E`) should be processed (i.e. fed to the `processAction` method)
     - Assumption: The last action in an action file is always `Exit` (`E`)
-  - [ ] After the first `Exit` (`E`) is processed, all other actions in the action file should be ignored (i.e., not fed to the `processAction` method)
+  - [x] After the first `Exit` (`E`) is processed, all other actions in the action file should be ignored (i.e., not fed to the `processAction` method)
     - Assumption: The `InputEngine` passed to `ReplaySokobanGame` is an instance of `StreamInputEngine` and `fetchAction` method will return the next action in the action file no matter whether there are `Exit` in the middle. If there are no more actions, `Exit` will be returned
   - [ ] Actions in the same action file should be processed in the same order as they appear in the action file
     - Assumption: Each action file corresponds to one `InputEngine` instance, and they are passed in the same order as an array to `ReplaySokobanGame`
