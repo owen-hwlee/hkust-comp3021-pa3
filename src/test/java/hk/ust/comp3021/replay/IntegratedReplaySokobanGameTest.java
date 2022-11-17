@@ -241,6 +241,8 @@ class IntegratedReplaySokobanGameTest {
             // Game ends with either
             // - Winning condition is satisfied
             // - All actions before the first Exit in all action files have been processed
+
+            // Test no infinite loop, i.e. should not keep rendering
         }
 
 
@@ -326,6 +328,8 @@ class IntegratedReplaySokobanGameTest {
             // Game must be rendered once before first action
 
             // Game must be rendered once after last action performed (excluding Exit)
+
+            // Should render the exact number of times
         }
         
     }
