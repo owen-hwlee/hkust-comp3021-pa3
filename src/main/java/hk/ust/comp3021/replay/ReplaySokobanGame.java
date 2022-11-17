@@ -12,6 +12,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.IntStream;
 
 import static hk.ust.comp3021.utils.StringResources.*;
 
@@ -91,6 +92,9 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
         this.renderingEngine = renderingEngine;
         this.inputEngines = inputEngines;
 
+        // Added code: initialized array
+        this.hasInputEnginesFinished = new boolean[this.inputEngines.size()];
+
         // Added code: initialized added locks and conditions
         this.lock = new ReentrantLock();
         this.renderingEngineCondition = lock.newCondition();
@@ -118,6 +122,8 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
 
     // Index used to select input engine in ROUND_ROBIN mode
     private volatile int inputEngineIndex = 0;
+    // List of whether each input engine has finished
+    private volatile boolean[] hasInputEnginesFinished;
     // Rendering engine Thread
     private Thread renderingEngineThread;
     // Array of input engine Threads
@@ -156,9 +162,6 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
         public void run() {
             // TODO: modify this method to implement the requirements.
 
-            // Store whether an Exit object has been received
-            boolean hasExited = false;
-
 //            // Force input engine Thread to wait for render engine to render first
 //            try {
 //                inputEnginesConditions[this.index].await();
@@ -167,7 +170,7 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
 //            }
 
 //            // TODO: Wrap everything in while-loop
-            while (!shouldStop()) {
+            while (!hasInputEnginesFinished[this.index] && !state.isWin()) {
 //
 //                // Create critical region using ReentrantLock
 //                lock.lock();
@@ -193,16 +196,16 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
 //                }
 
                 // Fetch and process Action from this player
-                if (!hasExited) {
-                    final var action = inputEngine.fetchAction();
-                    if (action instanceof Exit) {
-                        hasExited = true;
-                    }
-                    final var result = processAction(action);
-                    if (result instanceof ActionResult.Failed failed) {
-                        renderingEngine.message(failed.getReason());
-                    }
+                final var action = inputEngine.fetchAction();
+                if (action instanceof Exit) {
+                    hasInputEnginesFinished[this.index] = true;
                 }
+                final var result = processAction(action);
+                if (result instanceof ActionResult.Failed failed) {
+                    renderingEngine.message(failed.getReason());
+                }
+
+//                // If Exit, give control to next input engine instead of rendering engine
 
 //                // Signal rendering engine after input Action is fetched
 //                renderingEngineCondition.signal();
@@ -284,7 +287,8 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
 //                // Release ReentrantLock
 //                // FIXME: put in finally clause
 //                lock.unlock();
-            } while (!shouldStop());
+                System.out.println(IntStream.range(0, hasInputEnginesFinished.length).allMatch(i -> hasInputEnginesFinished[i]));
+            } while (!state.isWin() && !IntStream.range(0, hasInputEnginesFinished.length).allMatch(i -> hasInputEnginesFinished[i]));
 
             // Render win message
             if (state.isWin()) {
