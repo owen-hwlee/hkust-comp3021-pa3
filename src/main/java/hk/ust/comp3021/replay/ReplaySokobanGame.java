@@ -198,6 +198,7 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                 // Fetch and process Action from this player
                 final var action = inputEngine.fetchAction();
                 if (action instanceof Exit) {
+                    // Should not continue to fetch actions after first Exit of player
                     hasInputEnginesFinished[this.index] = true;
                 }
                 final var result = processAction(action);
@@ -205,6 +206,7 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                     renderingEngine.message(failed.getReason());
                 }
 
+                // Pass control to other engines
 //                // If Exit, give control to next input engine instead of rendering engine
 
 //                // Signal rendering engine after input Action is fetched
@@ -233,6 +235,9 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
         @Override
         public void run() {
             // TODO: modify this method to implement the requirements.
+
+            // Render game start
+            renderingEngine.message(GAME_READY_MESSAGE);
 
             // Compute number of milliseconds to pass to Thread.sleep
             final long sleepTime = 1000 / frameRate;
@@ -290,6 +295,8 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                 System.out.println(IntStream.range(0, hasInputEnginesFinished.length).allMatch(i -> hasInputEnginesFinished[i]));
             } while (!state.isWin() && !IntStream.range(0, hasInputEnginesFinished.length).allMatch(i -> hasInputEnginesFinished[i]));
 
+            // Render game exit
+            renderingEngine.message(GAME_EXIT_MESSAGE);
             // Render win message
             if (state.isWin()) {
                 renderingEngine.message(WIN_MESSAGE);
