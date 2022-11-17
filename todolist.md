@@ -202,11 +202,17 @@ These are test cases written by ourselves. These test cases are written in `Inte
 - [ ] `ReplaySokobanGame` class
 - [ ] `ReplaySokobanGame::run`
 - [ ] `ReplaySokobanGame.InputEngineRunnable`
+  - [ ] Should hand control to next input engine instead of rendering engine if Exit
 - [ ] `ReplaySokobanGame.RenderingEngineRunnable`
 
 ## Issue board
 
 - [ ] `ReplaySokobanGame` class
+  - [ ] `GameState::isExitSpecified` is switched to `true` when the first `Exit` object is passed to `processAction`
+		- But there may still be other players who have not finished their own Action list
+		- `GameState::shouldStop` will return true when only one player finishes their own list of Action
+  	- [ ] Solution: should not use `GameState::shouldStop`, each input engine should have their own `isExitSpecified` to use for game loop
+  		- [ ] Rendering engine needs to know when all input engines have finished their respective Action list
 - [ ] `ReplaySokobanGame::run`
 - [ ] `ReplaySokobanGame.InputEngineRunnable`
 - [ ] `ReplaySokobanGame.RenderingEngineRunnable`
