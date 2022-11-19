@@ -144,14 +144,15 @@ The implementation of `InputEngineRunnable::run` should fulfill these requiremen
 
 The implementation of `RenderingEngineRunnable::run` should fulfill these requirements:
 
-- Render start message and initial map once first
+- Render start message once first
 - In game loop:
   - Wait for 1 action from any/selected input engine (depending on `Mode`)
   - Render result immediately after processing input
   - Pass Thread control back to any/selected input engine
   - Pass FPS test, i.e. invoke `renderingEngine.render()` `1000 / frameRate` times in every second
     - Perform `Thread.sleep(1000 / frameRate)` after each render
-- Render final state once after all other input engines finish execution
+- Render final game map and message once after all other input engines finish execution
+- Render winning message if game wins
 
 ## Test cases
 
@@ -197,7 +198,11 @@ These are test cases written by ourselves. These test cases are written in `Inte
 
 | Passed?  | Test name  | Test description  | Thread-dependent?  | # repetitions  |
 |--- |--- |--- |--- |--- |
-| No  | .  | .  | .  | .  |
+| Test unimplemented  | testRenderInitialStateBeforeFirstAction  | Game must render initial state before first Action  | No  | 20  |
+| Test unimplemented  | testRenderFinalWinningStateWhenGameWins  | Game should render final winning state when game wins  | Yes  | 100  |
+| Test unimplemented  | testRenderFinalStateAfterAllActionsProcessed  | Game should render final game state after all Actions from all players are processed  | Yes  | 100  |
+| Test unimplemented  | testGameDoesNotImmediatelyRenderMapAfterExitAction  | Game should not immediately render game map after Exit Action  | Yes  | 100  |
+| Test unimplemented  | testRenderNPlus1TimesForTotalOfNActionsExcludingExit  | Game should render n+1 times for a total of n non-Exit Actions  | Yes  | 100  |
 
 ## Non-specified implementations
 

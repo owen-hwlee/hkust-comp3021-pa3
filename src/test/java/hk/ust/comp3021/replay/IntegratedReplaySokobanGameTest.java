@@ -352,11 +352,12 @@ class IntegratedReplaySokobanGameTest {
             @RepeatedTest(THREAD_UNSAFE_REPETITIONS)
             @Tag(TestKind.PUBLIC)
             void testGameDoesNotImmediatelyRenderMapAfterExitAction() {
-                // TODO: Check when Exit Action is passed,
+                // TODO: Check when Exit Action is passed, rendering engine does not immediately render game state again
             }
 
             @DisplayName("Game should render n+1 times for a total of n non-Exit Actions")
             @RepeatedTest(THREAD_UNSAFE_REPETITIONS)
+            // FIXME: Set parameters for test
             @ParameterizedTest
             @Tag(TestKind.PUBLIC)
             void testRenderNPlus1TimesForTotalOfNActionsExcludingExit() {
