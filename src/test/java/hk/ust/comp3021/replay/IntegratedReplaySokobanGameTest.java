@@ -8,6 +8,7 @@ import hk.ust.comp3021.game.InputEngine;
 import hk.ust.comp3021.game.RenderingEngine;
 import hk.ust.comp3021.utils.TestKind;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -241,8 +242,6 @@ class IntegratedReplaySokobanGameTest {
             // Game ends with either
             // - Winning condition is satisfied
             // - All actions before the first Exit in all action files have been processed
-
-            // Test no infinite loop, i.e. should not keep rendering
         }
 
 
@@ -252,7 +251,6 @@ class IntegratedReplaySokobanGameTest {
         @Nested
         class RunTest {
 
-            @Disabled
             @DisplayName("Game's run method should wait for all threads to finish before return")
             @RepeatedTest(THREAD_SAFE_REPETITIONS)
             @Tag(TestKind.PUBLIC)
@@ -325,11 +323,47 @@ class IntegratedReplaySokobanGameTest {
          */
         @Nested
         class RenderingEngineRunnableTest {
-            // Game must be rendered once before first action
 
-            // Game must be rendered once after last action performed (excluding Exit)
+            @DisplayName("Game must render initial state before first Action")
+            @RepeatedTest(THREAD_SAFE_REPETITIONS)
+            @Tag(TestKind.PUBLIC)
+            void testRenderInitialStateBeforeFirstAction() {
+                // TODO: Check if start game message is printed
+                //  Then check if initial game map is rendered immediately after
+            }
 
-            // Should render the exact number of times
+            @DisplayName("Game should render final winning state when game wins")
+            @RepeatedTest(THREAD_UNSAFE_REPETITIONS)
+            @Tag(TestKind.PUBLIC)
+            void testRenderFinalWinningStateWhenGameWins() {
+                // TODO: Provide a scenario where the game must be won
+                //  Then check if end game message followed by win message is printed
+            }
+
+            @DisplayName("Game should render final game state after all Actions from all players are processed")
+            @RepeatedTest(THREAD_UNSAFE_REPETITIONS)
+            @Tag(TestKind.PUBLIC)
+            void testRenderFinalStateAfterAllActionsProcessed() {
+                // TODO: Provide a scenario where the game cannot be won
+                //  Then check if end game message without win message is printed
+            }
+
+            @DisplayName("Game should not immediately render game map after Exit Action")
+            @RepeatedTest(THREAD_UNSAFE_REPETITIONS)
+            @Tag(TestKind.PUBLIC)
+            void testGameDoesNotImmediatelyRenderMapAfterExitAction() {
+                // TODO: Check when Exit Action is passed,
+            }
+
+            @DisplayName("Game should render n+1 times for a total of n non-Exit Actions")
+            @RepeatedTest(THREAD_UNSAFE_REPETITIONS)
+            @ParameterizedTest
+            @Tag(TestKind.PUBLIC)
+            void testRenderNPlus1TimesForTotalOfNActionsExcludingExit() {
+                // TODO: Check number of invocations of .render(state)
+                //  Render map once before fetchAction, then render once after each non-Exit Action, hence n+1 renders for n Actions
+            }
+
         }
         
     }
