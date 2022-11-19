@@ -208,15 +208,16 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                         }
                     }
 
-                    // TODO: Pass control to other engines
-//                // If Exit, give control to next input engine instead of rendering engine
-
-//                // Signal rendering engine after input Action is fetched
-                    renderingEngineCondition.signal();
                 } catch (InterruptedException e) {
                     System.out.println("InterruptedException caught in input engine Thread %d".formatted(this.index));
                     throw new RuntimeException(e);
                 } finally {
+                    // TODO: Pass control to other engines
+                    // If Exit, give control to next input engine instead of rendering engine
+
+                    // Signal rendering engine after input Action is fetched
+                    renderingEngineCondition.signal();
+
                     // Release ReentrantLock
                     lock.unlock();
                 }
@@ -284,20 +285,20 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                     //    final var expected = (float) timeElapsed / 1000 * fps;
                     Thread.sleep(sleepTime);
 
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                } finally {
 //                    // Signal input engine(s)
 //                    // TODO: Allow each inputEngine execution by Mode (ROUND_ROBIN vs FREE_RACE)
 //                    if (Mode.ROUND_ROBIN.equals(mode)) {
 //                        // ROUND_ROBIN: allow next input engine to run
-                        inputEngineIndex = (inputEngineIndex + 1) % inputEngines.size();
+                    inputEngineIndex = (inputEngineIndex + 1) % inputEngines.size();
 //                        inputEnginesCondition.signal();
 //                    } else {
 //                        // FREE_RACE: allow all input engines to run
-                        inputEnginesCondition.signalAll();
+                    inputEnginesCondition.signalAll();
 //                    }
 
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                } finally {
                     // Release ReentrantLock
                     lock.unlock();
                 }
