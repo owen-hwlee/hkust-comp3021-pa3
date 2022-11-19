@@ -115,12 +115,23 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
     }
 
     // TODO: add any method or field you need.
+
+    // Helper Enum to represent which type of engine is currently running
+    private enum Engine {
+        INPUT, RENDERING
+    }
+
     // Concurrency information
 
     // Index used to select input engine in ROUND_ROBIN mode
     private volatile int inputEngineIndex = 0;
     // List of whether each input engine has finished
     private volatile boolean[] hasInputEnginesFinished;
+    // Current working engine
+    private volatile Engine currentEngine = Engine.RENDERING;
+
+    // Concurrency tools
+
     // Concurrency lock
     private final ReentrantLock lock;
     // Rendering engine condition
@@ -181,7 +192,7 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
 //
 //                // Await own turn to run
 //                // FIXME: Determine while loop run condition
-//                while (this.index != inputEngineIndex) {
+//                while (!Engine.INPUT.equals(currentEngine) && this.index != inputEngineIndex) {
 //                    try {
 //                        inputEnginesCondition.await();
 //                    } catch (InterruptedException e) {
@@ -270,7 +281,7 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
 //
 //                    // Await own turn to run
 //                    // TODO: Determine while loop run condition
-//                    while (frameRate > 0) {
+//                    while (!Engine.RENDERING.equals(currentEngine)) {
 //                        renderingEngineCondition.await();
 //                    }
 
