@@ -129,6 +129,8 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
     private volatile boolean[] hasInputEnginesFinished;
     // Current working engine
     private volatile Engine currentEngine = Engine.RENDERING;
+    // FIXME: DEBUG use, to be deleted
+    private volatile int renderCount = 0;
 
     // Concurrency tools
 
@@ -176,64 +178,48 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
         public void run() {
             // TODO: modify this method to implement the requirements.
 
-//            // Force input engine Thread to wait for render engine to render first
-//            try {
-//                inputEnginesCondition.await();
-//            } catch (InterruptedException e) {
-//                throw new RuntimeException(e);
-//            }
-
-//            // Game loop
+            // Game loop
             while (!shouldStop()) {
-//
-//                // FIXME: Wrap everything in try-catch-finally block
-//                // Create critical region using ReentrantLock
-//                lock.lock();
-//
-//                // Await own turn to run
-//                // FIXME: Determine while loop run condition
-//                while (!Engine.INPUT.equals(currentEngine) && this.index != inputEngineIndex) {
-//                    try {
-//                        inputEnginesCondition.await();
-//                    } catch (InterruptedException e) {
-//                        throw new RuntimeException(e);
-//                    }
-//                }
-//
-//                // Make sure no other input engines are allowed to execute concurrently
-//                for (int i = 0; i < inputEnginesConditions.length; i++) {
-//                    if (i != this.index) {
-//                        try {
-//                            inputEnginesConditions[i].await();
-//                        } catch (InterruptedException e) {
-//                            throw new RuntimeException(e);
-//                        }
-//                    }
-//                }
 
-                // If input engine has not received Exit object
-                if (!hasInputEnginesFinished[this.index]) {
-                    // Fetch and process Action from this player
-                    final var action = inputEngine.fetchAction();
-                    if (action instanceof Exit) {
-                        // Should not continue to fetch actions after first Exit of player
-                        hasInputEnginesFinished[this.index] = true;
-                    }
-                    final var result = processAction(action);
-                    if (result instanceof ActionResult.Failed failed) {
-                        renderingEngine.message(failed.getReason());
-                    }
-                }
+                // Wrap entire loop content in try-catch to handle possible Threading Exceptions
+                try {
+                    // Create critical region using ReentrantLock
+                    lock.lock();
 
-                // Pass control to other engines
+                    // Await own turn to run
+                    // No other engines are allowed to execute concurrently
+                    while (!Engine.INPUT.equals(currentEngine) && this.index != inputEngineIndex) {
+                        inputEnginesCondition.await();
+                    }
+
+                    // If input engine has not received Exit object
+                    if (!hasInputEnginesFinished[this.index]) {
+                        // Fetch and process Action from this player
+                        final var action = inputEngine.fetchAction();
+                        if (action instanceof Exit) {
+                            // Should not continue to fetch actions after first Exit of player
+                            hasInputEnginesFinished[this.index] = true;
+                        }
+                        final var result = processAction(action);
+                        // FIXME: DEBUG use, to be deleted
+                        System.out.println("Action from player %d processed".formatted(this.index));
+                        if (result instanceof ActionResult.Failed failed) {
+                            renderingEngine.message(failed.getReason());
+                        }
+                    }
+
+                    // TODO: Pass control to other engines
 //                // If Exit, give control to next input engine instead of rendering engine
 
 //                // Signal rendering engine after input Action is fetched
-//                renderingEngineCondition.signal();
-//
-//                // Release ReentrantLock
-//                // FIXME: put in finally clause
-//                lock.unlock();
+                    renderingEngineCondition.signal();
+                } catch (InterruptedException e) {
+                    System.out.println("InterruptedException caught in input engine Thread %d".formatted(this.index));
+                    throw new RuntimeException(e);
+                } finally {
+                    // Release ReentrantLock
+                    lock.unlock();
+                }
             }
         }
     }
@@ -262,28 +248,30 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                         .orElse(UNDO_QUOTA_UNLIMITED);
                 renderingEngine.message(undoQuotaMessage);
                 renderingEngine.render(currentState);
+                // FIXME: DEBUG use, to be deleted
+                ++renderCount;
             };
 
             // Render game start
             renderingEngine.message(GAME_READY_MESSAGE);
 
-//            // Compute number of milliseconds to pass to Thread.sleep
-//            final long sleepTime = 1000 / frameRate;
+            // Compute number of milliseconds to pass to Thread.sleep
+            final long sleepTime = 1000 / frameRate;
 
             // Game loop
             do {
 
                 // Wrap entire loop content in try-catch to handle possible Threading Exceptions
-//                try {
-//
-//                    // Create critical region using ReentrantLock
-//                    lock.lock();
-//
-//                    // Await own turn to run
-//                    // TODO: Determine while loop run condition
-//                    while (!Engine.RENDERING.equals(currentEngine)) {
-//                        renderingEngineCondition.await();
-//                    }
+                try {
+
+                    // Create critical region using ReentrantLock
+                    lock.lock();
+
+                    // Await own turn to run
+                    // No input engine should be running concurrently
+                    while (!Engine.RENDERING.equals(currentEngine)) {
+                        renderingEngineCondition.await();
+                    }
 
                     // Perform rendering
                     renderMapAndUndo.accept(state);
@@ -294,25 +282,25 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                     //  Test case uses
                     //    final var timeElapsed = renderTimes.get(renderTimes.size() - 1).getTime() - renderTimes.get(0).getTime();
                     //    final var expected = (float) timeElapsed / 1000 * fps;
-//                    Thread.sleep(sleepTime);
+                    Thread.sleep(sleepTime);
 
 //                    // Signal input engine(s)
-//                    // Allow each inputEngine execution by Mode (ROUND_ROBIN vs FREE_RACE)
+//                    // TODO: Allow each inputEngine execution by Mode (ROUND_ROBIN vs FREE_RACE)
 //                    if (Mode.ROUND_ROBIN.equals(mode)) {
 //                        // ROUND_ROBIN: allow next input engine to run
-//                        inputEngineIndex = (inputEngineIndex + 1) % inputEngines.size();
+                        inputEngineIndex = (inputEngineIndex + 1) % inputEngines.size();
 //                        inputEnginesCondition.signal();
 //                    } else {
 //                        // FREE_RACE: allow all input engines to run
-//                        inputEngineCondition.signalAll();
+                        inputEnginesCondition.signalAll();
 //                    }
 
-//                } catch (InterruptedException e) {
-//                    throw new RuntimeException(e);
-//                } finally {
-//                    // Release ReentrantLock
-//                    lock.unlock();
-//                }
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                } finally {
+                    // Release ReentrantLock
+                    lock.unlock();
+                }
             } while (!shouldStop());
 
             // Render final game state
@@ -323,6 +311,8 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
             if (state.isWin()) {
                 renderingEngine.message(WIN_MESSAGE);
             }
+            // FIXME: DEBUG use, to be deleted
+            System.out.println(renderCount);
         }
     }
 
