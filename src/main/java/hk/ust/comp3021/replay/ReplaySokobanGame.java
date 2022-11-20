@@ -334,6 +334,7 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
         // Spawn new thread for rendering engine
         // Rendering engine Thread
         final Thread renderingEngineThread = new Thread(new RenderingEngineRunnable());
+        renderingEngineThread.setPriority(Thread.MAX_PRIORITY);
 
         // Spawn new threads for each input engine
         // Array of input engine Threads
