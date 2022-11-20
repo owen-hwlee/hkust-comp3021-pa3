@@ -165,14 +165,6 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                 // If Exit, give control to next input engine instead of rendering engine
                 inputEngineIndex = (inputEngineIndex + 1) % inputEngines.size();
                 state.notifyAll();
-                if (Mode.ROUND_ROBIN.equals(mode)) {
-                    try {
-                        state.wait();
-                    } catch (InterruptedException e) {
-                        System.out.printf("InterruptedException caught in input engine Thread %d%n", this.index);
-                        throw new RuntimeException(e);
-                    }
-                }
             };
 
             // Game loop
@@ -182,8 +174,20 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                     try {
                         // Await own turn to run
                         // No other engines are allowed to execute concurrently
-                        while (!Engine.INPUT.equals(currentEngine) || this.index != inputEngineIndex) {
+                        // FIXME: inputEngineIndex is a ROUND_ROBIN concept, need to refactor to adapt to FREE_RACE
+                        while (!shouldStop() && (!Engine.INPUT.equals(currentEngine) || this.index != inputEngineIndex)) {
                             state.wait();
+                        }
+                        // FIXME: if some input engine Threads in the middle have already terminated, e.g. Thread index i
+                        //  When input engine Thread i-1 terminates, it will switch current index to i
+                        //  But Thread i already terminated so the current index can never be updated
+                        //  All other Threads are subsequently stuck
+                        //  Need find a way to escape while loop if game already ended
+
+                        // Check if the game should stop to terminate game loop
+                        if (shouldStop()) {
+                            finishActionProcessingHandler.run();
+                            break;
                         }
 
                         // If input engine has not received Exit object
@@ -202,12 +206,10 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                             if (result instanceof ActionResult.Failed failed) {
                                 renderingEngine.message(failed.getReason());
                             }
-                        }
-
-                        // Check if the game should stop to terminate game loop
-                        if (shouldStop()) {
-                            finishActionProcessingHandler.run();
-                            break;
+                            // FIXME: DEBUG use, to be deleted
+                            if (shouldStop()) {
+                                System.out.printf("Game is completed after this move from player %d%n", this.index);
+                            }
                         }
 
                     } catch (InterruptedException e) {
@@ -218,6 +220,8 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                     }
                 }
             }
+
+            System.out.printf("Input engine %d terminated%n", this.index);
         }
     }
 
@@ -274,14 +278,14 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                     //    final var expected = (float) timeElapsed / 1000 * fps;
                     Thread.sleep(sleepTime);
 
+                    currentEngine = Engine.RENDERING;
+
                     // Check if game should stop before rendering current game state
                     // Otherwise terminate game loop
                     if (shouldStop()) {
                         currentEngine = Engine.INPUT;
                         break;
                     }
-
-                    currentEngine = Engine.RENDERING;
 
                     // Perform rendering
                     renderMapAndUndo.run();
@@ -302,6 +306,8 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
             if (state.isWin()) {
                 renderingEngine.message(WIN_MESSAGE);
             }
+
+            System.out.println("Rendering engine terminated");
         }
     }
 
