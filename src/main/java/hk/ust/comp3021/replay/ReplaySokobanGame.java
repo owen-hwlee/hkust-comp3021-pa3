@@ -76,7 +76,6 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
      * @param gameState       The game state.
      * @param inputEngines    the input engines.
      * @param renderingEngine the rendering engine.
-     * @throws IllegalArgumentException when there are more than two players in the map.
      */
     public ReplaySokobanGame(
             @NotNull Mode mode,

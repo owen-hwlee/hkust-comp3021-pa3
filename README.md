@@ -78,6 +78,8 @@ The `ReplaySokobanGame` class implement the most of the functionalities.
 Users of the program needs to specify a game map (as that in PA1) as well as one or more action files that contains the actions to be performed by each player.
 Then the replay game will start and automatically perform actions of each player concurrently until the game ends (either the game wins or all actions are performed).
 
+**Note that up to 26 players should be supported in PA3**
+
 As an example, consider the following arguments to the main method:
 
 ```
