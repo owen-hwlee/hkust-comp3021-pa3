@@ -255,27 +255,20 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
 
             // Render game start
             renderingEngine.message(GAME_READY_MESSAGE);
+            // Render initial game map
+            renderMapAndUndo.accept(state);
 
             // Compute number of milliseconds to pass to Thread.sleep
             final long sleepTime = 1000 / frameRate;
+
+            // Allow input engines to start processing Actions from players
+            currentEngine = Engine.INPUT;
 
             // Game loop
             do {
 
                 // Wrap entire loop content in try-catch to handle possible Threading Exceptions
                 try {
-
-                    // Create critical region using ReentrantLock
-                    lock.lock();
-
-                    // Await own turn to run
-                    // No input engine should be running concurrently
-                    while (!Engine.RENDERING.equals(currentEngine)) {
-                        renderingEngineCondition.await();
-                    }
-
-                    // Perform rendering
-                    renderMapAndUndo.accept(state);
 
                     // Process frameRate
                     // FIXME: still fails small number of FPS test repetitions
@@ -284,6 +277,18 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                     //    final var timeElapsed = renderTimes.get(renderTimes.size() - 1).getTime() - renderTimes.get(0).getTime();
                     //    final var expected = (float) timeElapsed / 1000 * fps;
                     Thread.sleep(sleepTime);
+
+                    // Create critical region using ReentrantLock
+                    lock.lock();
+
+                    // Await own turn to run
+                    // No input engine should be running concurrently under ROUND_ROBIN mode
+                    while (!Engine.RENDERING.equals(currentEngine)) {
+                        renderingEngineCondition.await();
+                    }
+
+                    // Perform rendering
+                    renderMapAndUndo.accept(state);
 
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
