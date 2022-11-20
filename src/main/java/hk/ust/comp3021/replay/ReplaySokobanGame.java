@@ -9,6 +9,7 @@ import hk.ust.comp3021.game.InputEngine;
 import hk.ust.comp3021.game.RenderingEngine;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Date;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -89,7 +90,8 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
         this.renderingEngine = renderingEngine;
         this.inputEngines = inputEngines;
 
-        // Added code: initialized array
+        // Added code: initialized value and array
+        this.sleepTime = 1000 / frameRate;
         this.hasInputEnginesFinished = new boolean[this.inputEngines.size()];
     }
 
@@ -112,6 +114,11 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
         INPUT, RENDERING
     }
 
+    // Constants
+
+    // Compute number of milliseconds to pass to Thread.sleep
+    final long sleepTime;
+
     // Concurrency information
 
     // Index used to select input engine in ROUND_ROBIN mode
@@ -120,6 +127,8 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
     private final boolean[] hasInputEnginesFinished;
     // Current working engine
     private Engine currentEngine = Engine.RENDERING;
+    // Previous render timestamp
+    private Date previousRender = new Date();
 
     /**
      * @return True when the game should stop running.
@@ -174,15 +183,11 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                     try {
                         // Await own turn to run
                         // No other engines are allowed to execute concurrently
+                        // Force input engines to concede control to rendering engine to fulfill FPS requirement
                         // FIXME: inputEngineIndex is a ROUND_ROBIN concept, need to refactor to adapt to FREE_RACE
-                        while (!shouldStop() && (!Engine.INPUT.equals(currentEngine) || this.index != inputEngineIndex)) {
+                        while (!shouldStop() && ((new Date().getTime() - previousRender.getTime() >= sleepTime) || !Engine.INPUT.equals(currentEngine) || this.index != inputEngineIndex)) {
                             state.wait();
                         }
-                        // FIXME: if some input engine Threads in the middle have already terminated, e.g. Thread index i
-                        //  When input engine Thread i-1 terminates, it will switch current index to i
-                        //  But Thread i already terminated so the current index can never be updated
-                        //  All other Threads are subsequently stuck
-                        //  Need find a way to escape while loop if game already ended
 
                         // Check if the game should stop to terminate game loop
                         if (shouldStop()) {
@@ -199,16 +204,8 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                                 hasInputEnginesFinished[this.index] = true;
                             }
                             final var result = processAction(action);
-                            // FIXME: DEBUG use, to be deleted
-                            if (!(action instanceof Exit)) {
-                                System.out.printf("Action from player %d processed%n", this.index);
-                            }
                             if (result instanceof ActionResult.Failed failed) {
                                 renderingEngine.message(failed.getReason());
-                            }
-                            // FIXME: DEBUG use, to be deleted
-                            if (shouldStop()) {
-                                System.out.printf("Game is completed after this move from player %d%n", this.index);
                             }
                         }
 
@@ -220,8 +217,6 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                     }
                 }
             }
-
-            System.out.printf("Input engine %d terminated%n", this.index);
         }
     }
 
@@ -246,12 +241,18 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
             Runnable renderMapAndUndo = () -> {
                 // Disallow concurrent updates to game state during rendering
                 synchronized (state) {
+                    // Render undo quota
                     final var undoQuotaMessage = state.getUndoQuota()
                             .map(it -> String.format(UNDO_QUOTA_TEMPLATE, it))
                             .orElse(UNDO_QUOTA_UNLIMITED);
                     renderingEngine.message(undoQuotaMessage);
+                    // Render game map
                     renderingEngine.render(state);
 
+                    // Update previous render timestamp
+                    previousRender = new Date();
+
+                    // Unblock input engine Threads
                     state.notifyAll();
                 }
             };
@@ -261,9 +262,6 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
             // Render initial game map
             renderMapAndUndo.run();
 
-            // Compute number of milliseconds to pass to Thread.sleep
-            final long sleepTime = 1000 / frameRate;
-
             // Allow input engines to start processing Actions from players
             currentEngine = Engine.INPUT;
 
@@ -272,12 +270,14 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                 // Wrap entire loop content in try-catch to handle possible Threading Exceptions
                 try {
                     // Process frameRate
-                    // FIXME: still fails small number of FPS test repetitions
+                    // FIXME: fails FPS test repetitions
+                    //  Significantly less frequent than required
                     //  Test case uses
                     //    final var timeElapsed = renderTimes.get(renderTimes.size() - 1).getTime() - renderTimes.get(0).getTime();
                     //    final var expected = (float) timeElapsed / 1000 * fps;
                     Thread.sleep(sleepTime);
 
+                    // Block input engines from updating game state
                     currentEngine = Engine.RENDERING;
 
                     // Check if game should stop before rendering current game state
@@ -294,6 +294,7 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                     System.out.println("InterruptedException caught in rendering engine Thread.");
                     throw new RuntimeException(e);
                 } finally {
+                    // Concede control back to input engines
                     currentEngine = Engine.INPUT;
                 }
             } while (true);
@@ -306,8 +307,6 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
             if (state.isWin()) {
                 renderingEngine.message(WIN_MESSAGE);
             }
-
-            System.out.println("Rendering engine terminated");
         }
     }
 
