@@ -67,7 +67,13 @@ The game Thread should then wait for all these engine Threads to terminate.
 
 The engine Threads pertaining to one `GameState` instance should not interfere with other `GameState` instances.
 
-<!-- TODO: Provide more explanation of concurrency on input engine - rendering engine level after TAs clarification in Discussion #195 -->
+First the game's initial state is rendered. The rendering engine then proceeds to waits until the next FPS frame while handing over control to the input engines. The input engines starts to process Actions. The input engines either process Actions from different players concurrently (`FREE_MODE`) or in a scheduled manner (`ROUND_ROBIN`).
+
+When the rendering engine is due to render, it will first block the input engines from processing Actions (hence not allowing game state to be updated simultaneously during each render). Then, it checks if the game should stop. If the game should not stop, the rendering engine will render the current undo quota and game map. If the game should stop, the rendering engine will render the final state and end the game. The rendering engine then unblocks the input engines to continue processing Actions while waiting for the next render.
+
+There is no need, however, to enforce an ordering of [one processed non-Exit Action -> one render -> ... (repeat)].
+
+An example edge case: suppose the computer is fast and the lists of Actions are short. The rendering engine should render the game initial state before any Actions should be processed. These Actions are processed extremely fast, and hence by the time the rendering engine is allowed to render again (due to FPS requirement), all Actions have been processed. The rendering engine should acknowledge that the game should stop, and only renders the final state of the game. As a result, in this scenario, the game state is only rendered a total of 2 times: the initial state and the final state.
 
 As an example, the following hierarchy demonstrates the Thread structure of a valid execution with `REPEAT` = 3 and 2 action files (i.e. 2 players):
 
@@ -91,20 +97,7 @@ To prevent sharing resource among independent games, static data member implemen
 
 This section documents code logic in my implementation.
 
-<!-- TODO: To be updated after TAs clarifications in Discussion #195 -->
-
-<!-- Thread concurrency is achieved using a `ReentrantLock` and 2 `Condition`s, one for input and one for rendering. -->
-
-<!-- Sequence of execution:
-  main Thread (generate engine Threads in `ReplaySokobanGame::run`)
-  &darr;
-  renderingEngineThread (render initial game state)
-  &darr;
-  [inputEngineThread -> renderingEngineThread] * n (game loop)
-  &darr;
-  renderingEngineThread (render final game state)
-  &darr;
-  main Thread (wait for all engine Threads to terminate) -->
+Thread concurrency is achieved using `sychronized` keyword and several instance variables.
 
 ### `ReplaySokobanGame::run` logic
 
@@ -213,10 +206,15 @@ Note that these test cases only test the concurrency within one single `ReplaySo
 ## Non-specified implementations
 
 - [ ] `ReplaySokobanGame` class
+  - [ ] <https://github.com/CastleLab/COMP3021-F22-PA-Student-Version/discussions/195#discussioncomment-4189464>
 - [ ] `ReplaySokobanGame::run`
 - [ ] `ReplaySokobanGame.InputEngineRunnable`
-  - [ ] Should hand control to next input engine instead of rendering engine if Exit
+  - [ ] It is fine for the input engine thread to either exit early or wait until the game exits (verified by TAs in Discussion #198)
+  - [ ] The action failure message is actually printed by the input engine, since it is related to the last processed action (verified by TAs in Discussion #195)
 - [ ] `ReplaySokobanGame.RenderingEngineRunnable`
+  - [ ] "Last action" refers to the last non-Exit Action before current game instance ends
+  - [ ] It is not that the renderingEngine runs between inputEngines. It is that the renderingEngine runs in parallel with inputEngines. The schedule could be arbitrary, e.g., extremely, inputEngines finish processing all actions before the renderingEngine get the chance to execute. (verified by TAs in Discussion #195)
+  - [ ] The rendering engine has no idea 1) whether there are new actions processed since last render, 2) what is the last processed action, or 3) how many actions are processed by now. The rendering engine just keep rendering in a separate thread at a fixed rate (frame per second)  (verified by TAs in Discussion #195)
 
 ## Issue board
 
@@ -231,6 +229,5 @@ Note that these test cases only test the concurrency within one single `ReplaySo
 - [ ] `ReplaySokobanGame.InputEngineRunnable`
 - [ ] `ReplaySokobanGame.RenderingEngineRunnable`
   - [ ] `Thread.sleep()` is capable of passing FPS test, but requires solid understanding of Java programme execution (verified by TAs in Discussion #156)
-  - [ ] "Last action" refers to the last non-Exit Action before current game instance ends
 
 ## This is the end of this todo list
