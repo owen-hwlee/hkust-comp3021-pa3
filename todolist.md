@@ -97,7 +97,7 @@ To prevent sharing resource among independent games, static data member implemen
 
 This section documents code logic in my implementation.
 
-Thread concurrency is achieved using `sychronized` keyword and several instance variables.
+Thread concurrency is achieved using `sychronized` keyword (invoking implicit lock on `state`, the GameState instance of each game) and several instance variables.
 
 ### `ReplaySokobanGame::run` logic
 
@@ -207,10 +207,13 @@ Note that these test cases only test the concurrency within one single `ReplaySo
 
 - [ ] `ReplaySokobanGame` class
   - [ ] <https://github.com/CastleLab/COMP3021-F22-PA-Student-Version/discussions/195#discussioncomment-4189464>
+  - [ ] Should make sure that each modification/view on the GameState is atomic and avoid any race on read/write of GameState (verified by TAs in Discussion #199)
 - [ ] `ReplaySokobanGame::run`
 - [ ] `ReplaySokobanGame.InputEngineRunnable`
   - [ ] It is fine for the input engine thread to either exit early or wait until the game exits (verified by TAs in Discussion #198)
   - [ ] The action failure message is actually printed by the input engine, since it is related to the last processed action (verified by TAs in Discussion #195)
+  - [ ] Input engine associated with the first `action.txt` (specified in the CLI arguments when starting the game) should be the first to process action (verified by TAs in Discussion #198)
+    - This has already been implemented by the TAs, note that input engine index is not necessarily equivalent to player ID
 - [ ] `ReplaySokobanGame.RenderingEngineRunnable`
   - [ ] "Last action" refers to the last non-Exit Action before current game instance ends
   - [ ] It is not that the renderingEngine runs between inputEngines. It is that the renderingEngine runs in parallel with inputEngines. The schedule could be arbitrary, e.g., extremely, inputEngines finish processing all actions before the renderingEngine get the chance to execute. (verified by TAs in Discussion #195)
