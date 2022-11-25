@@ -8,7 +8,6 @@ import hk.ust.comp3021.game.InputEngine;
 import hk.ust.comp3021.game.RenderingEngine;
 import hk.ust.comp3021.utils.TestKind;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.params.ParameterizedTest;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -315,6 +314,16 @@ class IntegratedReplaySokobanGameTest {
             // Test round-robin
 
             // Test free race
+
+            // Test number of actions processed
+            @DisplayName("Game should process n+m Actions for a total of n non-Exit Actions and m players")
+            @RepeatedTest(THREAD_UNSAFE_REPETITIONS)
+            @Tag(TestKind.PUBLIC)
+            void testProcessNPlusMActionsForTotalOfNNonExitActionsAndMPlayers() {
+                // TODO: Check number of invocations of .fetchAction() and .processAction(action)
+                //  Processes n non-Exit Actions and m Exit Actions, hence n+m Actions in total
+                //  Assumes the game is not won
+            }
         }
 
 
@@ -346,16 +355,6 @@ class IntegratedReplaySokobanGameTest {
             void testRenderFinalStateAfterAllActionsProcessed() {
                 // TODO: Provide a scenario where the game cannot be won
                 //  Then check if end game message without win message is printed
-            }
-
-            @DisplayName("Game should render n+1 times for a total of n non-Exit Actions")
-            @RepeatedTest(THREAD_UNSAFE_REPETITIONS)
-            // FIXME: Set parameters for test
-            @ParameterizedTest
-            @Tag(TestKind.PUBLIC)
-            void testRenderNPlus1TimesForTotalOfNActionsExcludingExit() {
-                // TODO: Check number of invocations of .render(state)
-                //  Render map once before fetchAction, then render once after each non-Exit Action, hence n+1 renders for n Actions
             }
 
         }

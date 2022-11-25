@@ -9,7 +9,6 @@ import hk.ust.comp3021.game.InputEngine;
 import hk.ust.comp3021.game.RenderingEngine;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Date;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -107,16 +106,11 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
         this(Mode.FREE_RACE, DEFAULT_FRAME_RATE, gameState, inputEngines, renderingEngine);
     }
 
-    // TODO: add any method or field you need.
-
-    // Helper Enum to represent which type of engine is currently running
-    private enum Engine {
-        INPUT, RENDERING
-    }
+    // DONE: add any method or field you need.
 
     // Constants
 
-    // Compute number of milliseconds to pass to Thread.sleep
+    // Compute number of milliseconds to delay to fulfill FPS requirement
     final long sleepTime;
 
     // Concurrency information
@@ -125,10 +119,8 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
     private int inputEngineIndex = 0;
     // List of whether each input engine has finished
     private final boolean[] hasInputEnginesFinished;
-    // Current working engine
-    private Engine currentEngine = Engine.RENDERING;
-    // Previous render timestamp
-    private Date previousRender = new Date();
+    // Previous render start timestamp
+    private long previousRenderStart;
 
     /**
      * @return True when the game should stop running.
@@ -165,56 +157,55 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
 
         @Override
         public void run() {
-            // TODO: modify this method to implement the requirements.
+            // DONE: modify this method to implement the requirements.
 
-            // Helper lambda function: handles concurrency after processing Actions
+            // Helper lambda function: handles concession of engine control after processing Actions
             Runnable finishActionProcessingHandler = () -> {
-                // TODO: Pass control to other engines
-                // TODO: Implement ROUND_ROBIN and FREE_RACE modes
-                // If Exit, give control to next input engine instead of rendering engine
-                inputEngineIndex = (inputEngineIndex + 1) % inputEngines.size();
-                state.notifyAll();
+                // Pass control to other engines
+
+                // FREE_RACE: no need to specifically pass control, no need to update inputEngineIndex
+                //  Essentially do nothing
+
+                // ROUND_ROBIN: Pass control to engine with next index
+                if (Mode.ROUND_ROBIN.equals(mode)) {
+                    inputEngineIndex = (inputEngineIndex + 1) % inputEngines.size();
+                }
             };
 
             // Game loop
-            while (true) {
-                synchronized (state) {
-                    // Wrap entire loop content in try-catch to handle possible Threading Exceptions
-                    try {
-                        // Await own turn to run
-                        // No other engines are allowed to execute concurrently
-                        // Force input engines to concede control to rendering engine to fulfill FPS requirement
-                        // FIXME: inputEngineIndex is a ROUND_ROBIN concept, need to refactor to adapt to FREE_RACE
-                        while (!shouldStop() && ((new Date().getTime() - previousRender.getTime() >= sleepTime) || !Engine.INPUT.equals(currentEngine) || this.index != inputEngineIndex)) {
-                            state.wait();
-                        }
+            while (!shouldStop()) {
+                // If finished all valid Actions, skip Thread entirely
+                if (hasInputEnginesFinished[this.index]) {
+                    finishActionProcessingHandler.run();
+                    Thread.yield();
+                    continue;
+                }
 
-                        // Check if the game should stop to terminate game loop
-                        if (shouldStop()) {
-                            finishActionProcessingHandler.run();
-                            break;
-                        }
+                // Await own turn to run
+                // No other engines are allowed to execute concurrently
+                // Force input engines to concede control to rendering engine to fulfill FPS requirement
+                while ((System.currentTimeMillis() - previousRenderStart >= sleepTime)
+                        || (Mode.ROUND_ROBIN.equals(mode) && this.index != inputEngineIndex)) {
+                    Thread.yield();
+                }
 
-                        // If input engine has not received Exit object
-                        if (!hasInputEnginesFinished[this.index]) {
-                            // Fetch and process Action from this player
-                            final var action = inputEngine.fetchAction();
-                            if (action instanceof Exit) {
-                                // Should not continue to fetch actions after first Exit of player
-                                hasInputEnginesFinished[this.index] = true;
-                            }
-                            final var result = processAction(action);
-                            if (result instanceof ActionResult.Failed failed) {
-                                renderingEngine.message(failed.getReason());
-                            }
+                // If game has not been won
+                if (!state.isWin()) {
+                    // Fetch and process Action from this player
+                    final var action = inputEngine.fetchAction();
+                    synchronized (state) {
+                        final var result = processAction(action);
+                        if (result instanceof ActionResult.Failed failed) {
+                            renderingEngine.message(failed.getReason());
                         }
-
-                    } catch (InterruptedException e) {
-                        System.out.printf("InterruptedException caught in input engine Thread %d%n", this.index);
-                        throw new RuntimeException(e);
-                    } finally {
-                        finishActionProcessingHandler.run();
                     }
+                    if (action instanceof Exit) {
+                        // Should not continue to fetch actions after first Exit of player
+                        hasInputEnginesFinished[this.index] = true;
+                    }
+
+                    // Pass control to other engines
+                    finishActionProcessingHandler.run();
                 }
             }
         }
@@ -235,12 +226,15 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
          */
         @Override
         public void run() {
-            // TODO: modify this method to implement the requirements.
+            // DONE: modify this method to implement the requirements.
 
             // Helper lambda function: render map and undo quota
             Runnable renderMapAndUndo = () -> {
                 // Disallow concurrent updates to game state during rendering
                 synchronized (state) {
+                    // Update previous render finish timestamp
+                    previousRenderStart = System.currentTimeMillis();
+
                     // Render undo quota
                     final var undoQuotaMessage = state.getUndoQuota()
                             .map(it -> String.format(UNDO_QUOTA_TEMPLATE, it))
@@ -248,56 +242,24 @@ public class ReplaySokobanGame extends AbstractSokobanGame {
                     renderingEngine.message(undoQuotaMessage);
                     // Render game map
                     renderingEngine.render(state);
-
-                    // Update previous render timestamp
-                    previousRender = new Date();
-
-                    // Unblock input engine Threads
-                    state.notifyAll();
                 }
             };
 
             // Render game start
             renderingEngine.message(GAME_READY_MESSAGE);
-            // Render initial game map
-            renderMapAndUndo.run();
-
-            // Allow input engines to start processing Actions from players
-            currentEngine = Engine.INPUT;
 
             // Game loop
             do {
-                // Wrap entire loop content in try-catch to handle possible Threading Exceptions
-                try {
-                    // Process frameRate
-                    // FIXME: fails FPS test repetitions
-                    //  Significantly less frequent than required
-                    //  Test case uses
-                    //    final var timeElapsed = renderTimes.get(renderTimes.size() - 1).getTime() - renderTimes.get(0).getTime();
-                    //    final var expected = (float) timeElapsed / 1000 * fps;
-                    Thread.sleep(sleepTime);
-
-                    // Block input engines from updating game state
-                    currentEngine = Engine.RENDERING;
-
-                    // Check if game should stop before rendering current game state
-                    // Otherwise terminate game loop
-                    if (shouldStop()) {
-                        currentEngine = Engine.INPUT;
-                        break;
-                    }
-
-                    // Perform rendering
+                // Perform rendering
+                if (!state.isWin()) {
                     renderMapAndUndo.run();
-
-                } catch (InterruptedException e) {
-                    System.out.println("InterruptedException caught in rendering engine Thread.");
-                    throw new RuntimeException(e);
-                } finally {
-                    // Concede control back to input engines
-                    currentEngine = Engine.INPUT;
                 }
-            } while (true);
+
+                // Wait up to sleep time to render to fulfill FPS requirement
+                while (System.currentTimeMillis() - previousRenderStart < sleepTime) {
+                    Thread.yield();
+                }
+            } while (!shouldStop());
 
             // Render final game state
             renderMapAndUndo.run();
