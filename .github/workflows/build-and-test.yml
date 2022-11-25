@@ -8,8 +8,8 @@ jobs:
     name: Gradle build and test
     strategy:
       matrix:
-#        os: [ ubuntu-latest,macos-latest,windows-latest ]
-        os: [ ubuntu-latest ]
+        os: [ ubuntu-latest,macos-latest,windows-latest ]
+#        os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout source code
@@ -24,13 +24,11 @@ jobs:
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
       - name: Build with Gradle
-#        run: chmod +x ./gradlew
         run: chmod +x ./gradlew && ./gradlew build
 #        uses: gradle/gradle-build-action@v2
 #        with:
 #          arguments: build
       - name: Test with Gradle
-#        run: chmod +x ./gradlew
         run: chmod +x ./gradlew && ./gradlew test
 #        uses: gradle/gradle-build-action@v2
 #        with:
