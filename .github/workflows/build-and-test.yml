@@ -24,12 +24,14 @@ jobs:
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
       - name: Build with Gradle
-        run: chmod +x ./gradlew build
+#        run: chmod +x ./gradlew
+        run: chmod +x ./gradlew && ./gradlew build
 #        uses: gradle/gradle-build-action@v2
 #        with:
 #          arguments: build
       - name: Test with Gradle
-        run: chmod +x ./gradlew test
+#        run: chmod +x ./gradlew
+        run: chmod +x ./gradlew && ./gradlew test
 #        uses: gradle/gradle-build-action@v2
 #        with:
 #          arguments: test
