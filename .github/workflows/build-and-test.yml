@@ -25,9 +25,11 @@ jobs:
         uses: gradle/gradle-build-action@v2
       - name: Build with Gradle
         uses: gradle/gradle-build-action@v2
+        run: chmod +x ./gradlew
         with:
-          arguments: ./gradlew build
+          arguments: build
       - name: Test with Gradle
         uses: gradle/gradle-build-action@v2
+        run: chmod +x ./gradlew
         with:
-          arguments: ./gradlew test
+          arguments: test
