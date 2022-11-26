@@ -105,6 +105,8 @@ The implementation is simple. Refer to given JavaDoc instructions, or if still i
 
 Essentially, this game is started by spawning the required engine Threads, starting them, and waiting for these spawned Threads to terminate.
 
+To better fulfill the strict FPS requirement, the rendering engine Thread is set to maximum priority.
+
 ### `ReplaySokobanGame.InputEngineRunnable::run` logic
 
 The implementation of `InputEngineRunnable::run` should fulfill these requirements:
@@ -112,10 +114,13 @@ The implementation of `InputEngineRunnable::run` should fulfill these requiremen
 - Wait for rendering engine to render first
 - In game loop:
   - Determine which input engine Thread gets to run
+    - `ROUND_ROBIN`: set next input engine to run
+    - `FREE_RACE`: no need to set which input engine
   - Fetch and process action from selected input engine
+  - Any write to the game state instance must be atomic
   - Pass Thread control back to rendering engine when due to render
-  - Remember to log the first `Exit` and disable this input engine after handling the `Exit` object
-  - Make sure to signal rendering engine to allow it to render win message
+  - Log the first `Exit` and disable this input engine after handling the `Exit` object
+  - Pass Thread control to another input engine, dependent on Mode
 
 ### `ReplaySokobanGame.RenderingEngineRunnable::run` logic
 
@@ -124,6 +129,7 @@ The implementation of `RenderingEngineRunnable::run` should fulfill these requir
 - Render start message once first
 - In game loop:
   - Render current game state
+  - Any read of the game state instance must be atomic
   - Pass Thread control back to input engines
   - Pass FPS test, i.e. invoke `renderingEngine.render()` `1000 / frameRate` times in every second
     - Perform `Thread.sleep(1000 / frameRate)` after each render
@@ -144,9 +150,11 @@ These are the test cases provided by TAs to rudimentarily test our implementatio
 |--- |--- |--- |--- |--- |
 | Yes  | testRenderingEngineThread  | Game's run method should spawn a new thread for rendering engine  | No  | 20  |
 | Yes  | testInputEngineThread  | Game's run method should spwan one thread for each input engine  | No  | 20  |
-| No  | testMovesOrderMultiple  | Moves from the same input engine should be processed in the same order (multiple input engine)  | Yes  | 100  |
-| No  | testRoundRobinModeEqualLength  | Action order should be enforced in ROUND_ROBIN mode (all input engines have same length of actions  | Yes  | 100  |
-| No  | testFPS  | FPS parameter should specify the times render method is invoked per second  | Yes  | 100  |
+| Yes  | testMovesOrderMultiple  | Moves from the same input engine should be processed in the same order (multiple input engine)  | Yes  | 100  |
+| Yes  | testRoundRobinModeEqualLength  | Action order should be enforced in ROUND_ROBIN mode (all input engines have same length of actions  | Yes  | 100  |
+| Yes  | testFPS  | FPS parameter should specify the times render method is invoked per second  | Yes  | 100  |
+
+Note that there are no hidden test cases for FPS (verified by TAs in Discussion #202).
 
 ### Custom test cases
 
@@ -158,7 +166,7 @@ Note that these test cases only test the concurrency within one single `ReplaySo
 
 | Passed?  | Test name  | Test description  | Thread-dependent?  | # repetitions  |
 |--- |--- |--- |--- |--- |
-| No  | .  | .  | .  | .  |
+| Test unimplemented  | .  | .  | .  | .  |
 
 #### `ReplaySokobanGame::run` tests
 
@@ -170,7 +178,7 @@ Note that these test cases only test the concurrency within one single `ReplaySo
 
 | Passed?  | Test name  | Test description  | Thread-dependent?  | # repetitions  |
 |--- |--- |--- |--- |--- |
-| No  | .  | .  | .  | .  |
+| Test unimplemented  | testProcessNPlusMActionsForTotalOfNNonExitActionsAndMPlayers  | Game should process n+m Actions for a total of n non-Exit Actions and m players  | Yes  | 100  |
 
 #### `ReplaySokobanGame.RenderingEngineRunnable` tests
 
@@ -179,58 +187,58 @@ Note that these test cases only test the concurrency within one single `ReplaySo
 | Test unimplemented  | testRenderInitialStateBeforeFirstAction  | Game must render initial state before first Action  | No  | 20  |
 | Test unimplemented  | testRenderFinalWinningStateWhenGameWins  | Game should render final winning state when game wins  | Yes  | 100  |
 | Test unimplemented  | testRenderFinalStateAfterAllActionsProcessed  | Game should render final game state after all Actions from all players are processed  | Yes  | 100  |
-| Test unimplemented  | testRenderNPlus1TimesForTotalOfNActionsExcludingExit  | Game should render n+1 times for a total of n non-Exit Actions  | Yes  | 100  |
 
 ## Requirements list
 
-- [ ] `ReplaySokobanGame` class
-  - [ ] Correctness: for an arbitrary list of games, running them in parallel should achieve the same result as running them in sequence
-  - [ ] The game ends when either:
-    - [ ] The winning condition is satisfied (i.e., all boxes are placed on the destinations)
-    - [ ] All actions in all action files (before the first `Exit`) have been processed
+- [x] `ReplaySokobanGame` class
+  - [x] Correctness: for an arbitrary list of games, running them in parallel should achieve the same result as running them in sequence
+  - [x] The game ends when either:
+    - [x] The winning condition is satisfied (i.e., all boxes are placed on the destinations)
+    - [x] All actions in all action files (before the first `Exit`) have been processed
 - [x] `ReplaySokobanGame::run`
   - [x] Starts the game by spawning threads for each `InputEngine` and `RenderingEngine` instance
   - [x] When `run` method returns, all spawned threads should already terminate
-- [ ] `ReplaySokobanGame.InputEngineRunnable`
+- [x] `ReplaySokobanGame.InputEngineRunnable`
   - [x] For each action file, (and the corresponding `InputEngine`), all actions before (inclusive) the first `Exit` (`E`) should be processed (i.e. fed to the `processAction` method)
     - Assumption: The last action in an action file is always `Exit` (`E`)
   - [x] After the first `Exit` (`E`) is processed, all other actions in the action file should be ignored (i.e., not fed to the `processAction` method)
     - Assumption: The `InputEngine` passed to `ReplaySokobanGame` is an instance of `StreamInputEngine` and `fetchAction` method will return the next action in the action file no matter whether there are `Exit` in the middle. If there are no more actions, `Exit` will be returned
   - [x] Actions in the same action file should be processed in the same order as they appear in the action file
     - Assumption: Each action file corresponds to one `InputEngine` instance, and they are passed in the same order as an array to `ReplaySokobanGame`
-- [ ] `ReplaySokobanGame.RenderingEngineRunnable`
+- [x] `ReplaySokobanGame.RenderingEngineRunnable`
   - [x] Game must be rendered at least once before first action is performed (i.e. the initial state of the game must be rendered)
   - [x] Game must be rendered at least once after the last action is performed (i.e. the final state of the game must be rendered)
-    - [ ] Trailing `Exit` action does not count
+    - [x] Trailing `Exit` action does not count
 
 ## Non-specified implementations
 
-- [ ] `ReplaySokobanGame` class
-  - [ ] <https://github.com/CastleLab/COMP3021-F22-PA-Student-Version/discussions/195#discussioncomment-4189464>
-  - [ ] Should make sure that each modification/view on the GameState is atomic and avoid any race on read/write of GameState (verified by TAs in Discussion #199)
-- [ ] `ReplaySokobanGame::run`
-- [ ] `ReplaySokobanGame.InputEngineRunnable`
-  - [ ] It is fine for the input engine thread to either exit early or wait until the game exits (verified by TAs in Discussion #198)
-  - [ ] The action failure message is actually printed by the input engine, since it is related to the last processed action (verified by TAs in Discussion #195)
-  - [ ] Input engine associated with the first `action.txt` (specified in the CLI arguments when starting the game) should be the first to process action (verified by TAs in Discussion #198)
+- [x] `ReplaySokobanGame` class
+  - [x] <https://github.com/CastleLab/COMP3021-F22-PA-Student-Version/discussions/195#discussioncomment-4189464>
+  - [x] Should make sure that each modification/view on the GameState is atomic and avoid any race on read/write of GameState (verified by TAs in Discussion #199)
+- [x] `ReplaySokobanGame::run`
+- [x] `ReplaySokobanGame.InputEngineRunnable`
+  - [x] It is fine for the input engine thread to either exit early or wait until the game exits (verified by TAs in Discussion #198)
+  - [x] The action failure message is actually printed by the input engine, since it is related to the last processed action (verified by TAs in Discussion #195)
+  - [x] Input engine associated with the first `action.txt` (specified in the CLI arguments when starting the game) should be the first to process action (verified by TAs in Discussion #198)
     - This has already been implemented by the TAs, note that input engine index is not necessarily equivalent to player ID
-- [ ] `ReplaySokobanGame.RenderingEngineRunnable`
-  - [ ] "Last action" refers to the last non-Exit Action before current game instance ends
-  - [ ] It is not that the renderingEngine runs between inputEngines. It is that the renderingEngine runs in parallel with inputEngines. The schedule could be arbitrary, e.g., extremely, inputEngines finish processing all actions before the renderingEngine get the chance to execute. (verified by TAs in Discussion #195)
-  - [ ] The rendering engine has no idea 1) whether there are new actions processed since last render, 2) what is the last processed action, or 3) how many actions are processed by now. The rendering engine just keep rendering in a separate thread at a fixed rate (frame per second)  (verified by TAs in Discussion #195)
+  - [x] Implementing round robin for both `ROUND_ROBIN` and `FREE_RACE` modes will result in failure of hidden test case for `FREE_RACE` (verified by TAs in Discussion #199)
+- [x] `ReplaySokobanGame.RenderingEngineRunnable`
+  - [x] "Last action" refers to the last non-Exit Action before current game instance ends
+  - [x] It is not that the renderingEngine runs between inputEngines. It is that the renderingEngine runs in parallel with inputEngines. The schedule could be arbitrary, e.g., extremely, inputEngines finish processing all actions before the renderingEngine get the chance to execute. (verified by TAs in Discussion #195)
+  - [x] The rendering engine has no idea 1) whether there are new actions processed since last render, 2) what is the last processed action, or 3) how many actions are processed by now. The rendering engine just keep rendering in a separate thread at a fixed rate (frame per second)  (verified by TAs in Discussion #195)
 
 ## Issue board
 
-- [ ] `ReplaySokobanGame` class
+- [x] `ReplaySokobanGame` class
   - [x] Inherited `AbstractSokobanGame::shouldStop` returns true when only one player finishes their own list of Actions
     - `AbstractSokobanGame::isExitSpecified` is switched to `true` when the first `Exit` object from any player is passed to `AbstractSokobanGame::processAction`
     - But there may still be other players who have not finished their own Action list
     - [x] Solution: Override `AbstractSokobanGame::shouldStop` to check for either:
       - [x] All input engines have finished providing Actions
       - [x] The game is won
-- [ ] `ReplaySokobanGame::run`
-- [ ] `ReplaySokobanGame.InputEngineRunnable`
-- [ ] `ReplaySokobanGame.RenderingEngineRunnable`
+- [x] `ReplaySokobanGame::run`
+- [x] `ReplaySokobanGame.InputEngineRunnable`
+- [x] `ReplaySokobanGame.RenderingEngineRunnable`
   - [ ] `Thread.sleep()` is capable of passing FPS test, but requires solid understanding of Java programme execution (verified by TAs in Discussion #156)
 
 ## This is the end of this todo list
