@@ -136,6 +136,15 @@ The implementation of `RenderingEngineRunnable::run` should fulfill these requir
 - Render final game map and message once after all other input engines finish execution
 - Render winning message if game wins
 
+### Tips on FPS requirement
+
+FPS is very strictly checked in the test cases. One of the major difficulties with keeping up with FPS is concurrency and "atomicness" of the game state. Here are some tips that may help with improving FPS:
+
+- Avoid implementing explicit locks, this increases programme overhead
+- Do not implement `Thread.sleep`, the rendering engine Thread does not deterministically start running after the sleep
+- When using `synchronized` blocks, there must be an object where an implicit monitor lock is acquired and released. This object must be kept atomic, and should be the `GameState` instance in the game instance for this PA. Examine the code for any operations that do not directly read/write on the atomic `GameState` instance, and exclude them from the critical region
+- To prevent timeout due to poor concurrency handling, avoid implementing any sleep or wait in `synchronized` block
+
 ## Test cases
 
 ### Regression test cases
